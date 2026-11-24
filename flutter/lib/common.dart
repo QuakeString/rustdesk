@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
@@ -2948,13 +2949,54 @@ int getWindowsTargetBuildNumber() {
   return getWindowsTargetBuildNumber_();
 }
 
-/// Indicating we need to use compatible ui mode.
+/// Indicating we need to use compatible ui mode: the window keeps the
+/// system title bar and frame instead of the frameless ui.
 ///
 /// [Conditions]
 /// - Windows 7, window will overflow when we use frameless ui.
+/// - Linux, when [kLinuxUseSystemTitleBar] is set (KDE Plasma by default).
 bool get kUseCompatibleUiMode =>
-    isWindows &&
-    const [WindowsTarget.w7].contains(windowsBuildNumber.windowsVersion);
+    kLinuxUseSystemTitleBar ||
+    (isWindows &&
+        const [WindowsTarget.w7].contains(windowsBuildNumber.windowsVersion));
+
+/// Linux: use the window manager's title bar, border and shadow.
+/// See `linuxUseSystemTitleBar_` in `native/common.dart`.
+final kLinuxUseSystemTitleBar = linuxUseSystemTitleBar_;
+
+/// Extra zoom applied to the whole UI on top of the engine's device pixel
+/// ratio. Only differs from 1.0 on Linux with a fractional desktop scale
+/// that Flutter's GTK embedder can't apply (KDE Plasma on X11).
+/// See `linuxUiScale_` in `native/common.dart` and `UiScaledBinding`.
+final kUiScale = linuxUiScale_;
+bool get isUiScaled => kUiScale != 1.0;
+
+/// The device pixel ratio the UI is laid out with: the engine's ratio
+/// multiplied by [kUiScale]. Use it instead of `FlutterView.devicePixelRatio`,
+/// which does not include [kUiScale].
+double uiDevicePixelRatio(ui.FlutterView view) =>
+    view.devicePixelRatio * kUiScale;
+
+/// Applies [kUiScale] to media query data built from a [ui.FlutterView].
+MediaQueryData scaleMediaQueryData(MediaQueryData data) {
+  if (!isUiScaled) return data;
+  return data.copyWith(
+    size: data.size / kUiScale,
+    devicePixelRatio: data.devicePixelRatio * kUiScale,
+    padding: data.padding / kUiScale,
+    viewPadding: data.viewPadding / kUiScale,
+    viewInsets: data.viewInsets / kUiScale,
+    systemGestureInsets: data.systemGestureInsets / kUiScale,
+  );
+}
+
+/// `MediaQueryData.fromView` with [kUiScale] applied.
+MediaQueryData mediaQueryDataFromView(ui.FlutterView view) =>
+    scaleMediaQueryData(MediaQueryData.fromView(view));
+
+/// Native window sizes are in the window system's units, while sizes in the
+/// code are designed in logical pixels: convert with [kUiScale].
+Size toWindowSize(Size size) => isUiScaled ? size * kUiScale : size;
 
 bool get isWin10 => windowsBuildNumber.windowsVersion == WindowsTarget.w10;
 
@@ -3946,6 +3988,13 @@ Widget buildPresetPasswordWarning() {
 
 // https://github.com/leanflutter/window_manager/blob/87dd7a50b4cb47a375b9fc697f05e56eea0a2ab3/lib/src/widgets/virtual_window_frame.dart#L44
 Widget buildVirtualWindowFrame(BuildContext context, Widget child) {
+  if (kLinuxUseSystemTitleBar) {
+    // The window manager draws the frame, border and shadow.
+    return isMainDesktopWindow
+        ? child
+        : Container(
+            color: Theme.of(context).colorScheme.background, child: child);
+  }
   boxShadow() => isMainDesktopWindow
       ? <BoxShadow>[
           if (stateGlobal.fullscreen.isFalse || stateGlobal.isMaximized.isFalse)

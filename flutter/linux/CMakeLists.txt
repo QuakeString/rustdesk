@@ -54,6 +54,9 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 
+# Xlib, to read the Xft.dpi resource (KDE's fractional scale on X11).
+pkg_check_modules(X11 IMPORTED_TARGET x11)
+
 # Wayland protocol for keyboard shortcuts inhibit
 pkg_check_modules(WAYLAND_CLIENT IMPORTED_TARGET wayland-client)
 pkg_check_modules(WAYLAND_PROTOCOLS_PKG QUIET wayland-protocols)
@@ -128,6 +131,10 @@ target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
 target_link_libraries(${BINARY_NAME} PRIVATE ${CMAKE_DL_LIBS})
 # target_link_libraries(${BINARY_NAME} PRIVATE librustdesk)
+if(X11_FOUND)
+  target_compile_definitions(${BINARY_NAME} PRIVATE HAS_X11_XFT_DPI)
+  target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::X11)
+endif()
 
 # Wayland support for keyboard shortcuts inhibit
 if(HAS_KEYBOARD_SHORTCUTS_INHIBIT)

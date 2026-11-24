@@ -1500,8 +1500,9 @@ class ScreenAdjustor {
     final screen = _screen;
     if (screen != null) {
       // Windows window frames use physical pixels while Flutter view sizes are
-      // logical. macOS and Linux window frames use the same units as Flutter.
-      double scale = isWindows ? screen.scaleFactor : 1.0;
+      // logical. macOS and Linux window frames use the same units as Flutter,
+      // except for the extra Linux UI zoom (kUiScale).
+      double scale = isWindows ? screen.scaleFactor : kUiScale;
       final Rect wndRect;
       try {
         wndRect = await WindowController.fromWindowId(windowId).getFrame();

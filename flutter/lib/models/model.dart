@@ -2337,7 +2337,7 @@ class CanvasModel with ChangeNotifier {
       isDesktop ? windowBorderWidth + kDragToResizeAreaPadding.bottom : 0;
 
   Size getSize() {
-    final mediaData = MediaQueryData.fromView(ui.window);
+    final mediaData = mediaQueryDataFromView(ui.window);
     final size = mediaData.size;
     // If minimized, w or h may be negative here.
     double w = size.width - leftToEdge - rightToEdge;
@@ -2377,7 +2377,7 @@ class CanvasModel with ChangeNotifier {
   double getAdjustY() {
     final bottom =
         parent.target?.cursorModel.keyHelpToolsRectToAdjustCanvas?.bottom ?? 0;
-    return max(bottom - MediaQueryData.fromView(ui.window).padding.top, 0);
+    return max(bottom - mediaQueryDataFromView(ui.window).padding.top, 0);
   }
 
   updateSize() => _size = getSize();
@@ -2405,7 +2405,7 @@ class CanvasModel with ChangeNotifier {
     // allow updates to proceed when style == kRemoteViewStyleCustom, even if the
     // rest of the ViewStyle fields are unchanged.
     if (_lastViewStyle == viewStyle &&
-        _devicePixelRatio == ui.window.devicePixelRatio &&
+        _devicePixelRatio == uiDevicePixelRatio(ui.window) &&
         style != kRemoteViewStyleCustom) {
       return;
     }
@@ -2426,7 +2426,7 @@ class CanvasModel with ChangeNotifier {
       }
     }
 
-    _devicePixelRatio = ui.window.devicePixelRatio;
+    _devicePixelRatio = uiDevicePixelRatio(ui.window);
     if (kIgnoreDpi) {
       if (style == kRemoteViewStyleOriginal) {
         _scale = 1.0 / _devicePixelRatio;
@@ -2758,7 +2758,7 @@ class CanvasModel with ChangeNotifier {
   // For reset canvas to the last view style
   reset() {
     _scale = _lastViewStyle.scale;
-    _devicePixelRatio = ui.window.devicePixelRatio;
+    _devicePixelRatio = uiDevicePixelRatio(ui.window);
     if (kIgnoreDpi && _lastViewStyle.style == kRemoteViewStyleOriginal) {
       _scale = 1.0 / _devicePixelRatio;
     }
@@ -3239,7 +3239,7 @@ class CursorModel with ChangeNotifier {
   // For update pan (mobile), onOneFingerPanStart, onOneFingerPanUpdate, onHoldDragUpdate
   Rect getVisibleRect() {
     final size = parent.target?.canvasModel.getSize() ??
-        MediaQueryData.fromView(ui.window).size;
+        mediaQueryDataFromView(ui.window).size;
     final xoffset = parent.target?.canvasModel.x ?? 0;
     final yoffset = parent.target?.canvasModel.y ?? 0;
     final scale = parent.target?.canvasModel.scale ?? 1;
@@ -3256,7 +3256,7 @@ class CursorModel with ChangeNotifier {
     // _x = _displayOriginX - xoffset / scale + size.width / scale * 0.5;
     // _y = _displayOriginY - yoffset / scale + size.height / scale * 0.5;
     final size = parent.target?.canvasModel.getSize() ??
-        MediaQueryData.fromView(ui.window).size;
+        mediaQueryDataFromView(ui.window).size;
     final xoffset = (_displayOriginX - _x) * scale + size.width * 0.5;
     final yoffset = (_displayOriginY - _y) * scale + size.height * 0.5;
     return Offset(xoffset, yoffset);

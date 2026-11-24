@@ -882,7 +882,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final size = renderObject.size;
       if (size != imcomingOnlyHomeSize) {
         imcomingOnlyHomeSize = size;
-        windowManager.setSize(getIncomingOnlyHomeSize());
+        windowManager.setSize(toWindowSize(getIncomingOnlyHomeSize()));
       }
     }
   }

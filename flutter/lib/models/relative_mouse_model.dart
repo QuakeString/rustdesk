@@ -810,7 +810,8 @@ class RelativeMouseModel {
         }
         return;
       }
-      final scale = view.devicePixelRatio;
+      // Includes the Linux UI zoom (see kUiScale).
+      final scale = uiDevicePixelRatio(view);
 
       if (_pointerRegionTopLeftGlobal != null && scale > 0) {
         // On macOS, window frame and CGWarpMouseCursorPosition use points (not pixels).
