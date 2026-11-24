@@ -2948,13 +2948,20 @@ int getWindowsTargetBuildNumber() {
   return getWindowsTargetBuildNumber_();
 }
 
-/// Indicating we need to use compatible ui mode.
+/// Indicating we need to use compatible ui mode: the window keeps the
+/// system title bar and frame instead of the frameless ui.
 ///
 /// [Conditions]
 /// - Windows 7, window will overflow when we use frameless ui.
+/// - Linux, when [kLinuxUseSystemTitleBar] is set (KDE Plasma by default).
 bool get kUseCompatibleUiMode =>
-    isWindows &&
-    const [WindowsTarget.w7].contains(windowsBuildNumber.windowsVersion);
+    kLinuxUseSystemTitleBar ||
+    (isWindows &&
+        const [WindowsTarget.w7].contains(windowsBuildNumber.windowsVersion));
+
+/// Linux: use the window manager's title bar, border and shadow.
+/// See `linuxUseSystemTitleBar_` in `native/common.dart`.
+final kLinuxUseSystemTitleBar = linuxUseSystemTitleBar_;
 
 bool get isWin10 => windowsBuildNumber.windowsVersion == WindowsTarget.w10;
 
@@ -3946,6 +3953,13 @@ Widget buildPresetPasswordWarning() {
 
 // https://github.com/leanflutter/window_manager/blob/87dd7a50b4cb47a375b9fc697f05e56eea0a2ab3/lib/src/widgets/virtual_window_frame.dart#L44
 Widget buildVirtualWindowFrame(BuildContext context, Widget child) {
+  if (kLinuxUseSystemTitleBar) {
+    // The window manager draws the frame, border and shadow.
+    return isMainDesktopWindow
+        ? child
+        : Container(
+            color: Theme.of(context).colorScheme.background, child: child);
+  }
   boxShadow() => isMainDesktopWindow
       ? <BoxShadow>[
           if (stateGlobal.fullscreen.isFalse || stateGlobal.isMaximized.isFalse)

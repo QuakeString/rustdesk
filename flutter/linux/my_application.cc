@@ -29,6 +29,31 @@ void try_set_transparent(GtkWindow* window, GdkScreen* screen, FlView* view);
 
 extern bool gIsConnectionManager;
 
+// Whether windows keep the window manager's title bar, border and shadow
+// instead of the frameless window with a title bar drawn by Flutter.
+// RUSTDESK_TITLE_BAR=system|custom forces either style; otherwise the system
+// title bar is used on KDE Plasma.
+// Keep in sync with `linuxUseSystemTitleBar_` in lib/native/common.dart.
+static gboolean use_system_title_bar() {
+  const gchar* forced = g_getenv("RUSTDESK_TITLE_BAR");
+  if (forced != NULL) {
+    if (g_ascii_strcasecmp(forced, "system") == 0) return TRUE;
+    if (g_ascii_strcasecmp(forced, "custom") == 0) return FALSE;
+  }
+  const gchar* desktop = g_getenv("XDG_CURRENT_DESKTOP");
+  if (desktop == NULL) return FALSE;
+  gboolean is_kde = FALSE;
+  gchar** names = g_strsplit(desktop, ":", -1);
+  for (gchar** name = names; *name != NULL; name++) {
+    if (g_ascii_strcasecmp(*name, "KDE") == 0) {
+      is_kde = TRUE;
+      break;
+    }
+  }
+  g_strfreev(names);
+  return is_kde;
+}
+
 // --- Side mouse button support (back/forward) ---
 // Flutter's Linux embedder doesn't deliver X11 button 8/9 events to Dart.
 // We intercept them via GDK and forward through a dedicated platform channel.
@@ -95,6 +120,13 @@ static void on_subwindow_created(FlPluginRegistry* registry) {
   if (registry == NULL || !FL_IS_VIEW(registry)) return;
   FlView* view = FL_VIEW(registry);
   GtkWidget* toplevel = gtk_widget_get_toplevel(GTK_WIDGET(view));
+  if (toplevel != NULL && GTK_IS_WINDOW(toplevel) && use_system_title_bar()) {
+    // The sub-window plugin adds a GtkHeaderBar on Wayland, which makes GTK
+    // draw its own (client-side) title bar. Drop it before the window is
+    // realized so the compositor (e.g. KWin) draws its native decoration.
+    gtk_window_set_titlebar(GTK_WINDOW(toplevel), NULL);
+    gtk_window_set_decorated(GTK_WINDOW(toplevel), TRUE);
+  }
   if (toplevel != NULL && GTK_IS_WINDOW(toplevel)) {
     FlMethodChannel* channel = side_buttons_create_channel(fl_view_get_engine(view));
     if (channel == NULL) return;
@@ -111,7 +143,8 @@ static void my_application_activate(GApplication* application) {
 
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
-  gtk_window_set_decorated(window, FALSE);
+  const gboolean system_title_bar = use_system_title_bar();
+  gtk_window_set_decorated(window, system_title_bar);
   // try setting icon for rustdesk, which uses the system cache
   GtkIconTheme* theme = gtk_icon_theme_get_default();
   gint icons[4] = {256, 128, 64, 32};
@@ -128,7 +161,9 @@ static void my_application_activate(GApplication* application) {
   // in case the window manager does more exotic layout, e.g. tiling.
   // If running on Wayland assume the header bar will work (may need changing
   // if future cases occur).
-  gboolean use_header_bar = TRUE;
+  // With the system title bar, never add a header bar: GTK would draw it as a
+  // client-side decoration instead of letting the window manager decorate.
+  gboolean use_header_bar = !system_title_bar;
   GdkScreen* screen = NULL;
 #ifdef GDK_WINDOWING_X11
   screen = gtk_window_get_screen(window);
