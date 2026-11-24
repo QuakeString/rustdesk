@@ -17,3 +17,4 @@ final isWebOnWindows_ = _localOs == kPeerPlatformWindows;
 final isWebOnLinux_ = _localOs == kPeerPlatformLinux;
 final isWebOnMacOS_ = _localOs == kPeerPlatformMacOS;
 final linuxUseSystemTitleBar_ = false;
+final linuxUiScale_ = 1.0;

@@ -32,3 +32,17 @@ bool _linuxUseSystemTitleBar() {
   final desktop = Platform.environment['XDG_CURRENT_DESKTOP'] ?? '';
   return desktop.toUpperCase().split(':').contains('KDE');
 }
+
+/// Extra UI zoom for Linux, exported by the runner as `RUSTDESK_UI_SCALE`
+/// when the desktop uses a scale Flutter's GTK embedder can't apply itself,
+/// like KDE Plasma's fractional scaling on X11 (Xft.dpi).
+///
+/// See `detect_ui_scale()` in `linux/my_application.cc`.
+final linuxUiScale_ = Platform.isLinux ? _linuxUiScale() : 1.0;
+
+double _linuxUiScale() {
+  final scale =
+      double.tryParse(Platform.environment['RUSTDESK_UI_SCALE'] ?? '') ?? 1.0;
+  if (scale.isNaN || scale < 0.5 || scale > 4.0) return 1.0;
+  return scale;
+}

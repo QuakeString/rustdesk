@@ -18,6 +18,7 @@ import 'package:flutter_hbb/desktop/screen/desktop_terminal_screen.dart';
 import 'package:flutter_hbb/desktop/widgets/refresh_wrapper.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
+import 'package:flutter_hbb/utils/ui_scale_binding.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -37,7 +38,8 @@ late List<String> kBootArgs;
 
 Future<void> main(List<String> args) async {
   earlyAssert();
-  WidgetsFlutterBinding.ensureInitialized();
+  // Zooms the UI on Linux when the desktop scale is fractional (see kUiScale).
+  UiScaledBinding.ensureInitialized();
 
   debugPrint("launch args: $args");
   kBootArgs = List.from(args);
@@ -306,7 +308,8 @@ bool _isCmReadyToShow = false;
 showCmWindow({bool isStartup = false}) async {
   if (isStartup) {
     WindowOptions windowOptions = getHiddenTitleBarWindowOptions(
-        size: kConnectionManagerWindowSizeClosedChat, alwaysOnTop: true);
+        size: toWindowSize(kConnectionManagerWindowSizeClosedChat),
+        alwaysOnTop: true);
     await windowManager.waitUntilReadyToShow(windowOptions, null);
     bind.mainHideDock();
     await Future.wait([
@@ -316,7 +319,8 @@ showCmWindow({bool isStartup = false}) async {
     ]);
     // ensure initial window size to be changed
     await windowManager.setSizeAlignment(
-        kConnectionManagerWindowSizeClosedChat, Alignment.topRight);
+        toWindowSize(kConnectionManagerWindowSizeClosedChat),
+        Alignment.topRight);
     _isCmReadyToShow = true;
   } else if (_isCmReadyToShow) {
     if (await windowManager.getOpacity() != 1) {
@@ -324,7 +328,8 @@ showCmWindow({bool isStartup = false}) async {
       await windowManager.focus();
       await windowManager.minimize(); //needed
       await windowManager.setSizeAlignment(
-          kConnectionManagerWindowSizeClosedChat, Alignment.topRight);
+          toWindowSize(kConnectionManagerWindowSizeClosedChat),
+          Alignment.topRight);
       windowOnTop(null);
     }
   }
@@ -333,7 +338,7 @@ showCmWindow({bool isStartup = false}) async {
 hideCmWindow({bool isStartup = false}) async {
   if (isStartup) {
     WindowOptions windowOptions = getHiddenTitleBarWindowOptions(
-        size: kConnectionManagerWindowSizeClosedChat);
+        size: toWindowSize(kConnectionManagerWindowSizeClosedChat));
     windowManager.setOpacity(0);
     await windowManager.waitUntilReadyToShow(windowOptions, null);
     bind.mainHideDock();
@@ -389,7 +394,8 @@ void runInstallPage() async {
   await initEnv(kAppTypeMain);
   _runApp('', const InstallPage(), MyTheme.currentThemeMode());
   WindowOptions windowOptions =
-      getHiddenTitleBarWindowOptions(size: Size(800, 600), center: true);
+      getHiddenTitleBarWindowOptions(
+      size: toWindowSize(Size(800, 600)), center: true);
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     windowManager.show();
     windowManager.focus();
@@ -546,7 +552,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
 Widget _keepScaleBuilder(BuildContext context, Widget? child) {
   return MediaQuery(
-    data: MediaQuery.of(context).copyWith(
+    data: scaleMediaQueryData(MediaQuery.of(context)).copyWith(
       textScaler: TextScaler.linear(1.0),
     ),
     child: child ?? Container(),
